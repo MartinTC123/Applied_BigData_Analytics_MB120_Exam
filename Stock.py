@@ -7,6 +7,8 @@ from sklearn.model_selection import TimeSeriesSplit
 from sklearn.model_selection import cross_validate
 from sklearn.linear_model import LinearRegression
 from sklearn.tree import DecisionTreeRegressor
+from sklearn.neural_network import MLPRegressor
+from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 
 class Stock_analysis(): # This class with its function will serve as a framework for this assignment.
 
@@ -53,7 +55,7 @@ class Stock_analysis(): # This class with its function will serve as a framework
 
         # SE OVER OM DET ER VERDT Å BRUKE DE 4 DICT NEDENFOR
         # prepare dict for train/test split indexes per ticker.
-        self.all_splits = {}
+        #self.all_splits = {}
         # prepare dict for cross validation results per ticker.
         self.cv_results = {}
         # prepare dict for trained models per ticker.
@@ -110,18 +112,16 @@ class Stock_analysis(): # This class with its function will serve as a framework
     def create_X_y_arrays(self, data):
         # array that contains the indicators data.
         X = data.loc[:, self.indicators].to_numpy()
-        print("Shape of X:", X.shape)
         # array with the target data (based on main_feature).
         y = data[self.label_name].to_numpy()
-        print("Shape of y:", y.shape)
         return X, y
 
     # Preprocessing - Uses the X and y arrays to create train and test splits.
     def create_X_y_train_test_split(self, X, y):
         data = self.stock_data[self.current_stock]
 
-        # Splitting the data into 5 splits
-        self.tscv = TimeSeriesSplit(n_splits=5)
+        n_splits = 5
+        self.tscv = TimeSeriesSplit(n_splits=n_splits)
 
         for train_index, test_index in self.tscv.split(data):
             X_train, X_test = X[train_index], X[test_index]
@@ -162,7 +162,7 @@ class Stock_analysis(): # This class with its function will serve as a framework
                         verbose=0  
                     )
                     model.fit(X_train, y_train)
-                self.cv_results[ticker+"_model_"+model_i] = cross_val_results # VURDER Å ENDRE PÅ FORMAT
+                self.cv_results[ticker+"_model_"+model_i] = cross_val_results 
                 self.trained_models["trained_model_"+model_i+"_"+ticker] = model
 
         return self.cv_results
@@ -182,7 +182,7 @@ class Stock_analysis(): # This class with its function will serve as a framework
 
             X_train, X_test, y_train, y_test = self.create_X_y_train_test_split(X=X, y=y)
 
-            prediction = data.loc[data.index[last_test_index], [self.main_feature, self.label_name]].copy(deep=True)
+            prediction = data.loc[data.index[last_test_index], [self.main_feature]].copy(deep=True)
             self.stock_predictions[ticker] = prediction
 
             for model_i in trained_models:
@@ -190,9 +190,13 @@ class Stock_analysis(): # This class with its function will serve as a framework
                 model = self.trained_models["trained_model_"+model_i+"_"+ticker]
                 y_pred = model.predict(X_test)
                 prediction.loc[:, model_i+" Prediction"] = y_pred
-                print("Stock: ",self.current_stock)
-                print("Model: ",self.current_model)
-                print("Number of predicted vals: ", len(y_pred)) # I OUTPUT ER ALLTID LENGDEN AV DENNE 16.66% AV TOTAL LENGDEN PÅ DATASETTET.
+                mse = mean_squared_error(y_test, y_pred)
+                print(f"--------{ticker} {model_i}--------")
+                print(f"Mean squared error for: ",mse)
+                r2 = r2_score(y_test, y_pred)
+                print(f"R-squared score for: ", r2)
+                mae = mean_absolute_error(y_test, y_pred)
+                print(f"Mean absolute error: ", mae)
         
         return self.stock_predictions
 
@@ -208,5 +212,10 @@ class Stock_analysis(): # This class with its function will serve as a framework
         #friedmans_mse score for potential splits provided better results than default 
         #samples required for a leaf node was found best at 5
         model = DecisionTreeRegressor(criterion="friedman_mse", min_samples_leaf = 5)
+
+        return model
+
+    def model_MLP(self):
+        model = MLPRegressor(random_state=1, max_iter=500)
 
         return model
