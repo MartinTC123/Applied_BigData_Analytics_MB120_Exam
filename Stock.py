@@ -3,6 +3,7 @@ import pandas as pd
 import inspect
 import datetime as dt
 import numpy as np
+from sklearn.model_selection import TimeSeriesSplit
 from sklearn.model_selection import cross_validate
 from sklearn.linear_model import LinearRegression
 from sklearn.tree import DecisionTreeRegressor
@@ -28,7 +29,7 @@ class Stock_analysis(): # This class with its function will serve as a framework
         # if the input of indicators=None (empty), use default list below. 
         # List below contains acceptable indicators for this assignment.
         if indicators is None:
-            self.indicators = ["MA5", "MA20", "MA50", "MA200", "MIN", "MAX", "LOGR", "MOM", "VOLA", "DIFF"]
+            self.indicators = ["MA5", "MA20", "MA50", "MA200", "MIN", "MAX", "LOG_RET", "MOM", "VOLA", "DIFF"]
         elif  pd.api.types.is_list_like(indicators) | isinstance(indicators, str):
             self.indicators = indicators
 
@@ -40,22 +41,15 @@ class Stock_analysis(): # This class with its function will serve as a framework
         # SE OVER OM DET ER DETTE VI SKAL BRUKE
         self.metric_names_printing = {"r2":"R-Squared", "neg_mean_absolute_error":"Mean Absolute Error", "neg_root_mean_squared_error":"Root Mean Squared Error", "neg_mean_absolute_percentage_error":"Mean Absolute Percentage Error"}
         
-        
-        # default models used for analysis in this assigment.
+        # Getting the selected models
         if selected_models is None:
             self.selected_models = {}
-            # get all methods in the class
-            for method_name, method_object in inspect.getmembers(self, predicate=inspect.ismethod):
-                # check name for correct pattern to identify models
-                if method_name.startswith("model_") == True:
-                    self.selected_models[method_name] = method_object
+            all_models = dir(self)
+            model_methods = [model_name for model_name in all_models if model_name.startswith("model_")]
+            for method_name in model_methods:
+                self.selected_models[method_name] = getattr(self, method_name)
         elif isinstance(selected_models, dict):
-            # save user version
             self.selected_models = selected_models
-        
-        # LSTM NN model that cant be evaluated using sci-kit. 
-        # dict for LSTM NN model that will be evaluated using keras.
-        self.keras_models = ["LSTM"]
 
         # SE OVER OM DET ER VERDT Å BRUKE DE 4 DICT NEDENFOR
         # prepare dict for train/test split indexes per ticker.
@@ -75,7 +69,7 @@ class Stock_analysis(): # This class with its function will serve as a framework
             self.stock_data[ticker] = raw_data
 
         # prepare dict for stock prediction data.
-        self.stock_data_predictions = {}
+        self.stock_predictions = {}
         
         print("Downloading stock data is completed")
     
@@ -99,13 +93,13 @@ class Stock_analysis(): # This class with its function will serve as a framework
             data["MIN"] = data[label_name].rolling(20).min()
         if "MAX" in self.indicators:
             data["MAX"] = data[label_name].rolling(20).max()
-        log_r = np.log(data[label_name] / data[label_name].shift(1))
-        if "LOGR" in self.indicators:
-            data["LOGR"] = log_r
+        log_ret = np.log(data[label_name] / data[label_name].shift(1))
+        if "LOG_RET" in self.indicators:
+            data["LOG_RET"] = log_ret
         if "MOM" in self.indicators:
-            data["MOM"] = log_r.rolling(20).mean()
+            data["MOM"] = log_ret.rolling(20).mean()
         if "VOLA" in self.indicators:
-            data["VOLA"] = log_r.rolling(20).std()
+            data["VOLA"] = log_ret.rolling(20).std()
         if "DIFF" in self.indicators:
             data["DIFF"] = data[label_name] - data[label_name].shift(1)
 
@@ -126,12 +120,12 @@ class Stock_analysis(): # This class with its function will serve as a framework
     def create_X_y_train_test_split(self, X, y):
         data = self.stock_data[self.current_stock]
 
-        # Splitting the data by 0.8.
-        self.split = int(len(data) * 0.8)
+        # Splitting the data into 5 splits
+        self.tscv = TimeSeriesSplit(n_splits=5)
 
-        # allocating 80% to training and 20% to testing.
-        X_train, X_test = X[:self.split], X[self.split:]
-        y_train, y_test = y[:self.split], y[self.split:]
+        for train_index, test_index in self.tscv.split(data):
+            X_train, X_test = X[train_index], X[test_index]
+            y_train, y_test = y[train_index], y[test_index]
 
         return X_train, X_test, y_train, y_test
     
@@ -150,29 +144,58 @@ class Stock_analysis(): # This class with its function will serve as a framework
             # Creating training and test splits.
             X_train, X_test, y_train, y_test = self.create_X_y_train_test_split(X=X, y=y)
 
-            # Training and evaluating selected models.
+            # Evaluating and training selected models.
             for model_i in input_models:
                 model = self.selected_models["model_"+model_i]()
-                if model_i not in self.keras_models:
-                    metric_dict = {}
-                    for metric_name in self.metric_names:
-                        metric_dict[metric_name] = metric_name
+                metric_dict = {}
+                for metric_name in self.metric_names:
+                    metric_dict[metric_name] = metric_name
+                    # using method from sci-kit lib to cross-validate
                     cross_val_results = cross_validate(
                         model,
                         X,
                         y,
-                        cv=self.split,
+                        cv=self.tscv,
                         scoring=metric_dict,
                         return_train_score=True,
                         n_jobs=-1,
                         verbose=0  
                     )
                     model.fit(X_train, y_train)
-                # MÅ LEGGE TIL ELSE CLAUSE DERSOM MODEL ER I keras_models
-                self.cv_results["cv_results_"+model_i+"_"+ticker] = cross_val_results
+                self.cv_results[ticker+"_model_"+model_i] = cross_val_results # VURDER Å ENDRE PÅ FORMAT
                 self.trained_models["trained_model_"+model_i+"_"+ticker] = model
 
         return self.cv_results
+    
+    def predict_trained_models(self, trained_models):
+        for ticker, data in self.stock_data.items():
+            # Setting the ticker to current stock.
+            self.current_stock = ticker
+
+            # Creating X and y arrays for train and test sets.
+            X, y = self.create_X_y_arrays(data=data)
+
+            last_train_index, last_test_index = None, None
+
+            for train_index, test_index in self.tscv.split(data):
+                last_train_index, last_test_index = train_index, test_index
+
+            X_train, X_test, y_train, y_test = self.create_X_y_train_test_split(X=X, y=y)
+
+            prediction = data.loc[data.index[last_test_index], [self.main_feature, self.label_name]].copy(deep=True)
+            self.stock_predictions[ticker] = prediction
+
+            for model_i in trained_models:
+                self.current_model = model_i
+                model = self.trained_models["trained_model_"+model_i+"_"+ticker]
+                y_pred = model.predict(X_test)
+                prediction.loc[:, model_i+" Prediction"] = y_pred
+                print("Stock: ",self.current_stock)
+                print("Model: ",self.current_model)
+                print("Number of predicted vals: ", len(y_pred)) # I OUTPUT ER ALLTID LENGDEN AV DENNE 16.66% AV TOTAL LENGDEN PÅ DATASETTET.
+        
+        return self.stock_predictions
+
 
     # MODEL
     def model_Linear(self):
