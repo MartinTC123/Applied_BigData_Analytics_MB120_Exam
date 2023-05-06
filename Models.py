@@ -24,3 +24,9 @@ class ML_Models():
         model = MLPRegressor(random_state=1, max_iter=500)
 
         return model
+
+
+    #Ensemble methods: 
+    # Bagging (Bootstrap Aggregating) 
+    # Boosting 
+    # Stacking (Stacked generalization) 

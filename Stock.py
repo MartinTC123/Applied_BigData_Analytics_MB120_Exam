@@ -190,13 +190,6 @@ class Stock_analysis(): # This class with its function will serve as a framework
                 model = self.trained_models["trained_model_"+model_i+"_"+ticker]
                 y_pred = model.predict(X_test)
                 prediction.loc[:, model_i+" Prediction"] = y_pred
-                mse = mean_squared_error(y_test, y_pred)
-                print(f"--------{ticker} {model_i}--------")
-                print(f"Mean squared error for: ",mse)
-                r2 = r2_score(y_test, y_pred)
-                print(f"R-squared score for: ", r2)
-                mae = mean_absolute_error(y_test, y_pred)
-                print(f"Mean absolute error: ", mae)
         
         return self.stock_predictions
 
