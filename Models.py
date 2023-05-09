@@ -13,22 +13,21 @@ class ML_Models():
         return model
 
     def DTR(self): 
-        # Might tweak on the parameters to see different results. Left on default for now.
         model = DecisionTreeRegressor()
         return model
 
     def MLP(self): 
         # Might tweak on the parameters to see different results.
-        model = MLPRegressor()
+        # Added max_iter as a parameter to reduce the runtime.
+        model = MLPRegressor(max_iter=100)
         return model
 
     def XGBoost(self): 
-        # Might tweak on the parameters to see different results. Left on default for now. 
         model = XGBRegressor()
         return model
 
     def XGBoost_LR(self): 
-        # Used "gblinear" as booster param to have Linear Regression as the base learner.
+        # Used "gblinear" as booster param to have Linear Regression as the estimator.
         model = XGBRegressor(booster="gblinear")
         return model
     
@@ -40,11 +39,6 @@ class ML_Models():
     def ADA_LR(self): 
         # Takes Linear Regression as estimator to compare results against default version.
         model = AdaBoostRegressor(estimator=self.LR())
-        return model
-
-    def ADA_MLP(self):
-        # Takes MLP as estimator to compare results against default version.
-        model = AdaBoostRegressor(estimator=self.MLP())
         return model
     
     def GBR(self): 
@@ -61,9 +55,16 @@ class ML_Models():
         # Takes Linear Regression as estimator to compare results against default version.
         model = BaggingRegressor(estimator=self.LR())
         return model
+
+    def Bagging_MLP(self):
+        # Takes MLP as estimator to compare results against default version.
+        model = BaggingRegressor(estimator=self.MLP())
+        return model
+
     
     # Stacking
     # Named SER to be recognized by def cross_evaluate from sklearn.
+    # final_estimator not specified due to good performance without it. (RidgeCV is default. Source: Scikit-learn)
     def SER(self): 
         estimators = []
         estimators.append(("LR", self.LR()))
@@ -72,10 +73,10 @@ class ML_Models():
         estimators.append(("XGBoost", self.XGBoost()))
         estimators.append(("ADA", self.ADA()))
         estimators.append(("ADA_LR", self.ADA_LR()))
-        estimators.append(("ADA_MLP", self.ADA_MLP()))
         estimators.append(("GRB", self.GBR()))
         estimators.append(("Bagging", self.Bagging()))
         estimators.append(("Bagging_LR", self.Bagging_LR()))
+        estimators.append(("Bagging_MLP", self.Bagging_MLP()))
 
         model = StackingRegressor(estimators=estimators)
         return model  
@@ -96,13 +97,13 @@ class ML_Models():
             return self.ADA()
         elif model == "ADA_LR":
             return self.ADA_LR()
-        elif model == "ADA_MLP":
-            return self.ADA_MLP()
         elif model == "GBR":
             return self.GBR()
         elif model == "Bagging":
             return self.Bagging()
         elif model == "Bagging_LR":
             return self.Bagging_LR()
+        elif model == "Bagging_MLP":
+            return self.Bagging_MLP()
         elif model == "StackedRegressor":
             return self.SER()
