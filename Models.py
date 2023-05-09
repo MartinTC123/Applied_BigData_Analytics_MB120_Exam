@@ -3,62 +3,79 @@ from sklearn.tree import DecisionTreeRegressor
 from sklearn.neural_network import MLPRegressor
 from xgboost import XGBRegressor
 from sklearn.ensemble import AdaBoostRegressor, GradientBoostingRegressor, BaggingRegressor, StackingRegressor
-from sklearn.model_selection import GridSearchCV
-
 
 class ML_Models():
     def __init__(self):
         pass
 
-    def LR(self): # Basert på plot og prediction så ser denne grei ut.
+    def LR(self): 
         model = LinearRegression()
         return model
 
-    def DTR(self): # Må kanskje tweakes litt på.
+    def DTR(self): 
         # Might tweak on the parameters to see different results. Left on default for now.
-        model = DecisionTreeRegressor(criterion="friedman_mse")
+        model = DecisionTreeRegressor()
         return model
 
-    def MLP(self): # Basert på plot og prediction så ser denne grei ut.
+    def MLP(self): 
         # Might tweak on the parameters to see different results.
         model = MLPRegressor()
         return model
 
-    def XGBoost(self): # Basert på plot og prediction så må denne tweakes. Funker kun for TEL.OL
+    def XGBoost(self): 
         # Might tweak on the parameters to see different results. Left on default for now. 
         model = XGBRegressor()
         return model
 
-    def XGBoost_LR(self): # Basert på plot og prediction så ser denne grei ut.
+    def XGBoost_LR(self): 
         # Used "gblinear" as booster param to have Linear Regression as the base learner.
         model = XGBRegressor(booster="gblinear")
         return model
     
-    def ADA(self): # Basert på plot og prediction så må denne tweakes. Funker kun for TEL.OL
-        # Might tweak on the parameters to see different results.
+    def ADA(self): 
+        # Left on default. Estimator is DTR.
         model = AdaBoostRegressor()
         return model
+
+    def ADA_LR(self): 
+        # Takes Linear Regression as estimator to compare results against default version.
+        model = AdaBoostRegressor(estimator=self.LR())
+        return model
+
+    def ADA_MLP(self):
+        # Takes MLP as estimator to compare results against default version.
+        model = AdaBoostRegressor(estimator=self.MLP())
+        return model
     
-    def GBR(self): # Basert på plot og prediction så må denne tweakes. Funker kun for TEL.OL
-        # Might tweak on the parameters to see different results. Left on default for now.
+    def GBR(self): 
+        # Left on default. Estimator is DTR.
         model = GradientBoostingRegressor()
         return model
     
-    def Bagging(self): # Basert på plot og prediction så må denne tweakes. Funker kun for TEL.OL
+    def Bagging(self): 
+        # Left on default. Estimator is DTR.
         model = BaggingRegressor()
+        return model
+
+    def Bagging_LR(self):
+        # Takes Linear Regression as estimator to compare results against default version.
+        model = BaggingRegressor(estimator=self.LR())
         return model
     
     # Stacking
     # Named SER to be recognized by def cross_evaluate from sklearn.
-    def SER(self): # Basert på plot og prediction så ser denne grei ut.
+    def SER(self): 
         estimators = []
         estimators.append(("LR", self.LR()))
         estimators.append(("DTR", self.DTR()))
         estimators.append(("MLP", self.MLP()))
         estimators.append(("XGBoost", self.XGBoost()))
         estimators.append(("ADA", self.ADA()))
+        estimators.append(("ADA_LR", self.ADA_LR()))
+        estimators.append(("ADA_MLP", self.ADA_MLP()))
         estimators.append(("GRB", self.GBR()))
         estimators.append(("Bagging", self.Bagging()))
+        estimators.append(("Bagging_LR", self.Bagging_LR()))
 
         model = StackingRegressor(estimators=estimators)
         return model  
@@ -77,9 +94,15 @@ class ML_Models():
             return self.XGBoost_LR()
         elif model == "ADA":
             return self.ADA()
+        elif model == "ADA_LR":
+            return self.ADA_LR()
+        elif model == "ADA_MLP":
+            return self.ADA_MLP()
         elif model == "GBR":
             return self.GBR()
         elif model == "Bagging":
             return self.Bagging()
+        elif model == "Bagging_LR":
+            return self.Bagging_LR()
         elif model == "StackedRegressor":
             return self.SER()
