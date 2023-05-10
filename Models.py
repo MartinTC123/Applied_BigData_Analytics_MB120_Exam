@@ -63,9 +63,8 @@ class ML_Models():
 
     
     # Stacking
-    # Named SER to be recognized by def cross_evaluate from sklearn.
     # final_estimator not specified due to good performance without it. (RidgeCV is default. Source: Scikit-learn)
-    def SER(self): 
+    def Stacking(self): 
         estimators = []
         estimators.append(("LR", self.LR()))
         estimators.append(("DTR", self.DTR()))
@@ -106,4 +105,4 @@ class ML_Models():
         elif model == "Bagging_MLP":
             return self.Bagging_MLP()
         elif model == "StackedRegressor":
-            return self.SER()
+            return self.Stacking()
