@@ -38,6 +38,7 @@ class ML_Models():
 
     def ADA_LR(self): 
         # Takes Linear Regression as estimator to compare results against default version.
+        # If "estimator=" gives error when running def train_models in notebook, change "estimator=" to "base_estimator="" 
         model = AdaBoostRegressor(estimator=self.LR())
         return model
     
@@ -53,11 +54,13 @@ class ML_Models():
 
     def Bagging_LR(self):
         # Takes Linear Regression as estimator to compare results against default version.
+        # If "estimator=" gives error when running def train_models in notebook, change "estimator=" to "base_estimator="" 
         model = BaggingRegressor(estimator=self.LR())
         return model
 
     def Bagging_MLP(self):
         # Takes MLP as estimator to compare results against default version.
+        # If "estimator=" gives error when running def train_models in notebook, change "estimator=" to "base_estimator="" 
         model = BaggingRegressor(estimator=self.MLP())
         return model
 
@@ -72,7 +75,7 @@ class ML_Models():
         estimators.append(("XGBoost", self.XGBoost()))
         estimators.append(("ADA", self.ADA()))
         estimators.append(("ADA_LR", self.ADA_LR()))
-        estimators.append(("GRB", self.GBR()))
+        estimators.append(("GBR", self.GBR()))
         estimators.append(("Bagging", self.Bagging()))
         estimators.append(("Bagging_LR", self.Bagging_LR()))
         estimators.append(("Bagging_MLP", self.Bagging_MLP()))
